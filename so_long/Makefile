@@ -23,7 +23,7 @@ OBJ = $(SRCS:.c=.o)
 all: $(NAME)
 
 $(NAME): $(FIL)
-	$(CC) $(CFLAGS)  -L $(MLX) $(LXFLAGS) $(FIL) -o $(NAME)
+	$(CC)   -L $(MLX) $(LXFLAGS) $(FIL) -o $(NAME) 
 
 run:
 	./$(NAME) map.cub

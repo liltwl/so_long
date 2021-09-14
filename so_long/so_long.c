@@ -3,6 +3,11 @@
 
 t_all   data;
 
+void	ft_close()
+{
+	exit(0);
+}
+
 int		ft_spaceskip(char *line, int *i)
 {
 	while ((line[*i] == ' ' || line[*i] == '\t' || line[*i] == '\n')
@@ -21,6 +26,128 @@ char	 haswallat(int x, int y,t_all *s)
     return (s->map.tab[xY][xX]);
 }
 
+int		ft_namecheck(char *arg, char *ext)
+{
+	int	i;
+
+	i = 0;
+	while (arg[i] != '\0')
+		i++;
+	if ((i > 4 && arg[i - 1] == ext[2] && arg[i - 2] == ext[1])
+		&& (arg[i - 3] == ext[0] && arg[i - 4] == '.'))
+		return (1);
+	return (0);
+}
+
+void	my_mlx_pixel_put(int x, int y, int color)
+{
+	char	*dst;
+
+	if (x < 0 || x > data.win.x || y < 0 || y > data.win.y)
+		return ;
+	dst = data.img.adr + (y * data.img.n + x * (data.img.fsh / 8));
+	*(unsigned int*)dst = color;
+}
+ /******************************/
+void	drawwall(int i, int j, unsigned int	*v)
+{
+	int				y;
+	int	x;
+	int s;
+
+	y = j;
+	x = -1;
+	s = 1;
+	while (++x < 64 && i < data.win.x)
+	{
+		j = y - 1;
+		s = 0;
+		i++;
+		while (++j < y + 64 && j < data.win.y - 1)
+			if (x < 64 && s < 64)
+			my_mlx_pixel_put(i, j, v[(s++ * 64) + x]);
+	}
+}
+
+int		ft_xppm(unsigned int **adr, char *file)
+{
+	int		fd;
+	void	*img;
+	int		tab[6];
+
+	if (ft_namecheck(file, "xpm") == 0)
+		return (-1);
+	if ((fd = open(file, O_RDONLY)) == -1)
+		return (-1);
+	close(fd);
+	img = mlx_xpm_file_to_image(data.mlx.ptr, file, &tab[0], &tab[1]);
+	if (img == NULL || tab[0] != 64 || tab[1] != 64)
+		return (-1);
+	*adr = (unsigned int *)mlx_get_data_addr(img, &tab[2], &tab[3], &tab[4]);
+	free(img);
+	return (0);
+}
+
+int		ft_texture(char *line, unsigned int **adr, int i)
+{
+	char		*file;
+	int			j;
+
+	ft_spaceskip(line, &i);
+	j = i;
+	while (line[i] != ' ' && line[i] != '\0')
+		(i)++;
+	if (!(file = malloc(sizeof(char) * (i - j + 1))))
+		return (-8);
+	i = j;
+	j = 0;
+	while (line[i] != ' ' && line[i] != '\0')
+		file[j++] = line[(i)++];
+	file[j] = '\0';
+	if (*adr != NULL)
+		return (-7);
+	j = ft_xppm(adr, file);
+	free(file);
+	return (j == -1 ? -9 : 0);
+}
+
+/*****************************/
+
+
+
+int		ft_lstupdate(int i, int j, int x1, int z)
+{
+	t_weed *w;
+	t_exit *x;
+
+	x = data.exit;
+	w = data.weed;
+	//i = i / data.map.ts;
+	//j = j / data.map.ts;
+	if (x1 == 1)
+	{
+		x1 = -1;
+		while (w[++x1].x)
+			if (w[x1].x == i && w[x1].y == j)
+			{
+				if (z == 1)
+					w[x1].v = 0;
+				return w[x1].v;
+			}
+	}
+	else
+	{
+		x1 = -1;
+		while (x[++x1].x)
+			if (x[x1].x == i && x[x1].y == j)
+			{
+				if (z == 1)
+					x[x1].v = 0;
+				return x[x1].v;
+			}
+	}
+	return 0;
+}
 void	plyupdate(void)
 {
 	int		x;
@@ -33,17 +160,13 @@ void	plyupdate(void)
 		data.ply.x = x;
 		data.ply.y = y;
 	}
+	if (haswallat(x, y, &data) == 'C')
+		ft_lstupdate(x/ data.map.ts, y/ data.map.ts ,1, 1);
+	if (haswallat(x, y, &data) == 'E')
+		ft_lstupdate(x/ data.map.ts, y/ data.map.ts ,2, 1);
 }
 
-void	my_mlx_pixel_put(int x, int y, int color)
-{
-	char	*dst;
 
-	if (x < 0 || x > data.win.x || y < 0 || y > data.win.y)
-		return ;
-	dst = data.img.adr + (y * data.img.n + x * (data.img.fsh / 8));
-	*(unsigned int*)dst = color;
-}
 
 void	drawline(int x0, int y0, int y1, int i)
 {
@@ -92,15 +215,18 @@ void drawmap(void)
 	{
 		while (++j < data.map.x)
 		{
-			printf("*******************%d ,%d  ,%c , %d***********************\n",i,j,haswallat(i* data.map.ts,j* data.map.ts, &data),data.map.y);
+			//printf("*******************%d ,%d  ,%c , %d***********************\n",i,j,haswallat(i* data.map.ts,j* data.map.ts, &data),data.map.y);
 			if (data.map.tab[i][j] == '1')
-				drawrect(j * data.map.ts, i* data.map.ts, WHITE);
-			else if (data.map.tab[i][j] == 'C')
-				drawrect(j * data.map.ts , i* data.map.ts, GREEN);
-			else if (data.map.tab[i][j] == 'E')
+				drawwall(j* 64, i* 64, data.tex.w);
+				//drawrect(j * data.map.ts, i* data.map.ts, WHITE);
+			else if (data.map.tab[i][j] == 'C' && ft_lstupdate(j, i, 1, 0))
+				drawwall(j* 64, i* 64, data.tex.c);
+				//drawrect(j * data.map.ts , i* data.map.ts, GREEN);
+			else if (data.map.tab[i][j] == 'E'&& ft_lstupdate(j, i, 2, 0))
 				drawrect(j * data.map.ts , i* data.map.ts, YELLOW);
 			else
-				drawrect(j * data.map.ts , i* data.map.ts, BLACK);
+				//drawwall(j* 64, i* 64, data.tex.p);
+				drawrect(j * data.map.ts , i* data.map.ts, BLUE);
 			
 		}
 	}
@@ -117,7 +243,8 @@ void	ft_draw(void)
 		&data.img.fsh, &data.img.n, &data.img.m);
 	drawmap();
 	//printf("%f\n",data.ply.x);
-	drawrect(data.ply.x , data.ply.y, RED);
+	//drawrect(data.ply.x , data.ply.y, RED);
+	drawwall(data.ply.x, data.ply.y, data.tex.p);
 	mlx_put_image_to_window(data.mlx.ptr, data.win.ptr, data.img.ptr, 0, 0);
 	free(data.img.ptr);
 	free(data.img.adr);
@@ -125,8 +252,8 @@ void	ft_draw(void)
 
 int		ft_press(int key, void *param)
 {
-	/*if (key == ESC)
-		ft_close(param, 1);*/
+	if (key == ESC)
+		ft_close();
 	if (key == W)
 		((t_all*)param)->ply.mup = -1;
 	else if (key == S)
@@ -162,6 +289,8 @@ int     ft_nlen(char n, char **p)
     return (cnt);
 }
 
+
+
 int     ft_addtolst(char **p, t_weed *w, t_exit *x)
 {
     int i;
@@ -180,15 +309,14 @@ int     ft_addtolst(char **p, t_weed *w, t_exit *x)
             if (p[i][j] == 'C')
             {
                 w[l].x = j;
-				printf("%f\n", w[l].x);
+				w[l].v = 1;
                 w[l++].y = i;
-                //w++;
             }
             else if (p[i][j] == 'E')
             {
                 x[cnt].x = j;
+				x[cnt].v = 1;
                 x[cnt++].y = i;
-                //x++;
             }
         }
     }
@@ -315,6 +443,10 @@ int		config(t_all *s, char *cub)
 	ft_pos(s);
 	data.win.x = data.map.x * data.map.ts;
 	data.win.y = data.map.y * data.map.ts;
+	s->err.n = ft_texture("yoo.xpm", &data.tex.w, 0);
+	s->err.n = ft_texture("weed.xpm", &data.tex.c, 0);
+	s->err.n = ft_texture("zombie.xpm", &data.tex.p, 0);
+	printf("%d\n",s->err.n);
 	fd = -1;
 	return (0); //return (ft_parcheck(s));
 }
@@ -332,11 +464,11 @@ void    init()
 	data.err.p = 0;
 	data.map.ts = 64;
 	data.map.tab = NULL;
-	data.tex.n = NULL;
-	data.tex.s = NULL;
+	data.tex.h = NULL;
+	data.tex.p = NULL;
 	data.tex.e = NULL;
 	data.tex.w = NULL;
-	data.tex.i = NULL;
+	data.tex.c = NULL;
 	data.weed = NULL;
     data.map.x = 0;
 	data.map.y = 0;
@@ -348,7 +480,6 @@ void    init()
 
 int     main(int agc, char **agv)
 {
-    int     i = -1;
     init();
     if (agc == 2)
         config(&data, agv[1]);
@@ -357,12 +488,8 @@ int     main(int agc, char **agv)
 		data.win.y, "so_long");
 	//plyupdate();
     //printf("%f\n", data.weed[0].x);
-	//ft_draw();
-    while (data.map.tab[++i])
-    {
-        printf("%s\n", data.map.tab[i]);
-    }
-	//mlx_hook(data.win.ptr, 17, 1L << 2, ft_close, &data);
+	ft_draw();
+	mlx_hook(data.win.ptr, 17, 1L << 2, close, &data);
 	mlx_hook(data.win.ptr, 2, 0, ft_press, &data);
 	mlx_loop(data.mlx.ptr);
 }

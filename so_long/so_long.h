@@ -82,23 +82,23 @@ typedef struct	s_weeed
 {
 	double			x;
 	double			y;
+	int				v;
 }				t_weed;
 
 typedef struct	s_exit
 {
 	double			x;
 	double			y;
+	int				v;
 }				t_exit;
 
 typedef struct	s_tex
 {
-	unsigned int	*n;
-	unsigned int	*s;
 	unsigned int	*e;
+	unsigned int	*c;
 	unsigned int	*h;
 	unsigned int	*w;
-	unsigned int	*i;
-	unsigned int	c;
+	unsigned int	*p;
 	unsigned int	f;
 }				t_tex;
 
